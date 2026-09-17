@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Noise Nowcaster</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --ground:#e9edf1; --surface:#fbfcfd; --surface-2:#f1f4f7;
+  --ink:#0f1c26; --ink-2:#314655; --muted:#5d7080;
+  --hair:#ccd6de; --hair-soft:#dee6ec;
+  --signal:#0d6e88; --signal-soft:#0d6e8814;
+  --ok:#2f7a4f; --warn:#96600f; --crit:#a3392f;
+  --f-display:"IBM Plex Sans Condensed",ui-sans-serif,system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",ui-sans-serif,system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ground:#0a131a; --surface:#101c25; --surface-2:#16242e;
+  --ink:#dce6ec; --ink-2:#b6c7d3; --muted:#87a0b0;
+  --hair:#1f303c; --hair-soft:#192832;
+  --signal:#41b4d2; --signal-soft:#41b4d21a;
+  --ok:#6cc08e; --warn:#d9a44a; --crit:#e07a6e;
+}}
+:root[data-theme="dark"]{
+  --ground:#0a131a; --surface:#101c25; --surface-2:#16242e;
+  --ink:#dce6ec; --ink-2:#b6c7d3; --muted:#87a0b0;
+  --hair:#1f303c; --hair-soft:#192832;
+  --signal:#41b4d2; --signal-soft:#41b4d21a;
+  --ok:#6cc08e; --warn:#d9a44a; --crit:#e07a6e;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--f-body);font-size:15.5px;line-height:1.55}
+.wrap{max-width:1060px;margin:0 auto;padding-inline:20px;padding-block:0 70px}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance}
+p{margin:0}
+a{color:var(--signal)}
+:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+
+header{padding-block:32px 20px;border-bottom:1px solid var(--hair);display:flex;justify-content:space-between;gap:18px;align-items:flex-end;flex-wrap:wrap}
+.kicker{font-family:var(--f-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--signal);margin-bottom:7px}
+h1{font-size:clamp(28px,4.2vw,40px);font-weight:700;letter-spacing:-.02em;line-height:1}
+.sub{color:var(--ink-2);margin-top:7px;max-width:60ch}
+.btn{font:inherit;font-size:13px;background:var(--surface-2);color:var(--ink);border:1px solid var(--hair);padding:6px 12px;cursor:pointer}
+
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--hair);overflow-x:auto}
+.tabs button{font:inherit;font-size:14px;background:none;border:0;border-bottom:2px solid transparent;color:var(--muted);padding:10px 15px;cursor:pointer;white-space:nowrap}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--signal);font-weight:600}
+.panel{padding-block:24px}
+.panel[hidden]{display:none!important}
+
+.two{display:grid;grid-template-columns:300px minmax(0,1fr);gap:18px;align-items:start}
+.card{background:var(--surface);border:1px solid var(--hair-soft);padding:16px}
+.card h3{font-size:16px;margin-bottom:10px}
+.slider{margin-bottom:13px}
+.slider label{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+.slider label b{color:var(--ink);font-weight:500;text-transform:none;letter-spacing:0;font-size:12.5px}
+input[type=range]{width:100%;accent-color:var(--signal)}
+
+.bands{display:grid;gap:10px}
+.band{background:var(--surface);border:1px solid var(--hair-soft);padding:13px 15px;display:grid;grid-template-columns:minmax(0,1fr) 96px 96px;gap:12px;align-items:center}
+.band .nm{font-weight:600}
+.band .meta{font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+.band .val{font-family:var(--f-display);font-size:23px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums;line-height:1}
+.band .unit{font-family:var(--f-mono);font-size:10px;color:var(--muted);text-align:right;display:block;margin-top:2px;letter-spacing:.06em;text-transform:uppercase}
+.band.weak{opacity:.62}
+.bar{height:6px;background:var(--surface-2);border:1px solid var(--hair-soft);margin-top:7px;position:relative}
+.bar i{position:absolute;top:0;bottom:0;background:var(--signal)}
+.pill{display:inline-block;font-family:var(--f-mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:1px 6px;border:1px solid currentColor}
+.pill.ok{color:var(--ok)} .pill.warn{color:var(--warn)} .pill.crit{color:var(--crit)}
+
+.note{margin-top:14px;font-size:13px;color:var(--muted);max-width:86ch}
+.legend{display:flex;flex-wrap:wrap;gap:7px 18px;margin-top:12px;font-family:var(--f-mono);font-size:12px;color:var(--ink-2)}
+.legend span{display:inline-flex;align-items:center;gap:7px}
+.legend i{width:20px;border-top:3px solid currentColor;display:inline-block}
+.legend i.dashed{border-top-style:dashed}
+.legend i.fill{height:11px;border:0;background:currentColor;opacity:.3}
+.legend em{font-style:normal;color:var(--muted)}
+.ctrls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px;font-size:13.5px}
+select{font:inherit;font-size:13.5px;padding:5px 8px;background:var(--surface);color:var(--ink);border:1px solid var(--hair)}
+figure{margin:0;background:var(--surface);border:1px solid var(--hair-soft);padding:16px}
+figure h3{font-size:16px}
+figure .cap{font-family:var(--f-mono);font-size:11px;color:var(--muted);margin-top:2px}
+svg{display:block;width:100%;height:auto;margin-top:10px}
+.tw{overflow-x:auto;border:1px solid var(--hair-soft);background:var(--surface);margin-top:14px}
+table{border-collapse:collapse;width:100%;min-width:520px;font-size:14px}
+th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--hair-soft);white-space:nowrap}
+tbody tr:last-child td{border-bottom:0}
+th{font-family:var(--f-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:500;background:var(--surface-2)}
+td.n{font-family:var(--f-mono);text-align:right;font-variant-numeric:tabular-nums}
+.prose{max-width:74ch;color:var(--ink-2);display:flex;flex-direction:column;gap:12px}
+.prose h3{color:var(--ink);font-size:17px;margin-top:8px}
+.prose code{font-family:var(--f-mono);font-size:12.5px;background:var(--surface-2);border:1px solid var(--hair-soft);padding:1px 5px}
+.prose ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+@media (max-width:820px){.two{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div>
+    <div class="kicker">Glider Rodeo 2026 · Kaena Ridge, Oahu</div>
+    <h1>Noise Nowcaster</h1>
+    <p class="sub">Predicts how loud the ocean is from the weather and sea state, and what that does to a glider's listening range.</p>
+  </div>
+  <button class="btn" id="theme" type="button">Toggle theme</button>
+</header>
+
+<div class="tabs" role="tablist">
+  <button role="tab" id="tab-try" aria-controls="p-try" aria-selected="true">Try it</button>
+  <button role="tab" id="tab-hind" aria-controls="p-hind" aria-selected="false">Hindcast</button>
+  <button role="tab" id="tab-drv" aria-controls="p-drv" aria-selected="false">What drives noise</button>
+  <button role="tab" id="tab-fc" aria-controls="p-fc" aria-selected="false">Forecast</button>
+  <button role="tab" id="tab-about" aria-controls="p-about" aria-selected="false">About</button>
+</div>
+
+<section class="panel" id="p-try" role="tabpanel" aria-labelledby="tab-try">
+  <div class="two">
+    <div class="card">
+      <h3>Conditions</h3>
+      <div id="sliders"></div>
+      <button class="btn" id="reset" type="button" style="width:100%">Reset to mission median</button>
+    </div>
+    <div>
+      <div class="bands" id="bands"></div>
+      <p class="note" id="trynote"></p>
+    </div>
+  </div>
+</section>
+
+<section class="panel" id="p-hind" role="tabpanel" aria-labelledby="tab-hind" hidden>
+  <div class="ctrls">
+    <label>Band <select id="h-band"></select></label>
+    <label>Glider <select id="h-glider"></select></label>
+    <span class="note" id="h-score" style="margin:0"></span>
+  </div>
+  <figure>
+    <h3>Predicted vs measured noise</h3>
+    <p class="cap" id="h-cap"></p>
+    <svg id="h-chart" viewBox="0 0 900 320" role="img" aria-label="Predicted and measured noise anomaly over the mission"></svg>
+    <div class="legend" id="h-legend"></div>
+  </figure>
+  <p class="note">The model never saw this glider during training: each glider is predicted by a model fitted on the other five. Values are decibels relative to that glider's own median.</p>
+  <div class="tw"><table id="h-table"></table></div>
+</section>
+
+<section class="panel" id="p-drv" role="tabpanel" aria-labelledby="tab-drv" hidden>
+  <div class="ctrls"><label>Band <select id="d-band"></select></label></div>
+  <figure>
+    <h3>What the model relies on</h3>
+    <p class="cap">Permutation importance, averaged over held-out gliders</p>
+    <svg id="d-chart" viewBox="0 0 900 380" role="img" aria-label="Feature importance bar chart"></svg>
+  </figure>
+  <p class="note">Permutation importance measures how much accuracy is lost when one input is shuffled. <b>depth_rate_ms</b> is the glider's own dive activity, so importance there is self-noise rather than weather.</p>
+</section>
+
+<section class="panel" id="p-fc" role="tabpanel" aria-labelledby="tab-fc" hidden>
+  <div class="ctrls">
+    <button class="btn" id="fc-refresh" type="button">Refresh from PacIOOS</button>
+    <span class="note" id="fc-meta" style="margin:0"></span>
+  </div>
+  <figure>
+    <h3>Listening conditions ahead</h3>
+    <p class="cap">Predicted range as a percentage of this glider's normal, with forecast wind behind</p>
+    <svg id="fc-chart" viewBox="0 0 900 320" role="img" aria-label="Forecast listening range and wind"></svg>
+    <div class="legend" id="fc-legend"></div>
+  </figure>
+  <div class="tw"><table id="fc-table"></table></div>
+</section>
+
+<section class="panel" id="p-about" role="tabpanel" aria-labelledby="tab-about" hidden>
+  <div class="prose" id="about"></div>
+  <div class="tw"><table id="a-metrics"></table></div>
+</section>
+
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const NS = "http://www.w3.org/2000/svg";
+const el = (t,a,txt)=>{const n=document.createElementNS(NS,t);for(const k in a)n.setAttribute(k,a[k]);if(txt!=null)n.textContent=txt;return n;};
+const get = async p => (await fetch(p)).json();
+const COLOURS = {capex987:"#ffb347", sg607:"#7fd6ff", sg274:"#c3a6ff", stenella:"#8ce99a", risso:"#ff8fa3", SEA117:"#ffe066"};
+const BAND_COLOUR = {FIWH:"#ff8fa3", HUWH:"#ffb347", SPWH:"#41b4d2", UNDO:"#8ce99a", BBWH:"#c3a6ff"};
+let META=null, HIND=null, DRV=null, DET=null, state={};
+
+const RATING_CLASS = {useful:"ok", marginal:"warn", useless:"crit"};
+function ratingPill(sc){
+  if(!sc) return "";
+  const label = sc.rating === "useless"
+      ? "no better than guessing"
+      : `${Math.round(sc.error_reduction_pct)}% better than guessing`;
+  return `<span class="pill ${RATING_CLASS[sc.rating]}" title="Model is off by ${sc.rmse_db} dB on average; `
+       + `assuming normal conditions is off by ${sc.baseline_rmse_db} dB.">${label}</span>`;
+}
+function ratingLine(sc){
+  if(!sc) return "";
+  return `<span class="meta">off by ${sc.rmse_db} dB &nbsp;·&nbsp; guessing normal: ${sc.baseline_rmse_db} dB</span>`;
+}
+
+/* ---------- Try it ---------- */
+function buildSliders(){
+  const box = $("#sliders");
+  META.sliders.forEach(s=>{
+    const start = s.key==="hour_utc" ? 12 : (META.defaults[s.key] ?? (s.min+s.max)/2);
+    state[s.key] = start;
+    const d = document.createElement("div"); d.className="slider";
+    d.innerHTML = `<label for="s-${s.key}">${s.label}<b id="v-${s.key}"></b></label>
+      <input type="range" id="s-${s.key}" min="${s.min}" max="${s.max}" step="${s.step}" value="${start}">`;
+    box.appendChild(d);
+    const input = d.querySelector("input");
+    input.addEventListener("input", ()=>{ state[s.key]=+input.value; showVal(s); runPredict(); });
+    showVal(s);
+  });
+}
+function showVal(s){ $("#v-"+s.key).textContent = `${(+state[s.key]).toFixed(s.step<1?2:0)} ${s.unit}`; }
+let timer=null;
+function runPredict(){
+  clearTimeout(timer);
+  timer = setTimeout(async ()=>{
+    const q = new URLSearchParams(state).toString();
+    const r = await get("/api/predict?"+q);
+    const box = $("#bands"); box.innerHTML="";
+    Object.entries(r.bands).forEach(([code,b])=>{
+      const weak = !b.score || b.score.rating === "useless";
+      const w = Math.max(2, Math.min(100, b.range_pct/2));
+      const div = document.createElement("div");
+      div.className = "band" + (weak?" weak":"");
+      div.innerHTML = `<div>
+          <div class="nm">${b.name} <span class="meta">${b.call}</span></div>
+          <div class="meta">${META.bands[code].lo}–${META.bands[code].hi} Hz &nbsp; ${ratingPill(b.score)}</div>
+          <div style="margin-top:4px">${ratingLine(b.score)}</div>
+          <div class="bar"><i style="left:0;width:${w}%"></i></div>
+        </div>
+        <div><div class="val">${b.anomaly_db>0?"+":""}${b.anomaly_db.toFixed(1)}</div><span class="unit">dB vs normal</span></div>
+        <div><div class="val">${b.range_pct.toFixed(0)}%</div><span class="unit">of normal range</span></div>`;
+      box.appendChild(div);
+    });
+    $("#trynote").innerHTML =
+        "<b>dB vs normal</b> is how much louder or quieter than usual this band is for a glider on this mission. "
+      + "It is relative because the recorders' absolute calibrations disagree by up to 57 dB. "
+      + "<b>% of normal range</b> follows from it: +6 dB halves the distance you can hear.<br><br>"
+      + "<b>“% better than guessing”</b> is how the model scored on gliders it was never trained on. "
+      + "The thing it is beating is the simplest possible alternative: always assume conditions are normal. "
+      + "0% means the model adds nothing. The fin whale band is dominated by shipping noise, "
+      + "which we have no data for, so it lands there.";
+  }, 60);
+}
+
+/* ---------- charts ---------- */
+function axes(svg){ svg.innerHTML=""; svg.style.color="var(--muted)"; return {x0:56,x1:876,y0:16,y1:262}; }
+function yTicks(svg,A,lo,hi,fmt){
+  for(let k=0;k<=4;k++){ const v=lo+(hi-lo)*k/4, y=A.y1-(v-lo)/(hi-lo)*(A.y1-A.y0);
+    svg.appendChild(el("line",{x1:A.x0,x2:A.x1,y1:y,y2:y,stroke:"var(--hair-soft)"}));
+    svg.appendChild(el("text",{x:A.x0-8,y:y+4,"text-anchor":"end","font-size":11,"font-family":"IBM Plex Mono, monospace",fill:"currentColor"},fmt(v))); }
+}
+function line(svg,xs,ys,colour,width=1.6,dash=null){
+  let d="",pen=true;
+  ys.forEach((v,i)=>{ if(v==null||!isFinite(v)){pen=true;return;} d+=(pen?"M":"L")+xs[i].toFixed(1)+","+v.toFixed(1); pen=false; });
+  if(d){ const p=el("path",{d,fill:"none",stroke:colour,"stroke-width":width}); if(dash)p.setAttribute("stroke-dasharray",dash); svg.appendChild(p); }
+}
+function xLabels(svg,A,labels,n=7){
+  const step=Math.max(1,Math.ceil(labels.length/n));
+  for(let i=0;i<labels.length;i+=step)
+    svg.appendChild(el("text",{x:A.x0+(A.x1-A.x0)*i/(labels.length-1||1),y:A.y1+18,"text-anchor":"middle","font-size":11,"font-family":"IBM Plex Mono, monospace",fill:"currentColor"},labels[i]));
+}
+
+/* ---------- Hindcast ---------- */
+function drawHindcast(){
+  const band=$("#h-band").value, glider=$("#h-glider").value;
+  const s=(HIND[band]||{})[glider];
+  const svg=$("#h-chart"), A=axes(svg);
+  $("#h-cap").textContent = `${META.bands[band].name} · ${glider} · held out of training`;
+  const m=META.metrics.find(x=>x.band===band), f=m&&m.folds.find(x=>x.held_out===glider);
+  if(f){
+    const red = 100*(1 - f.rmse_db/f.baseline_rmse_db);
+    const cls = red>=10 ? "ok" : red>=2 ? "warn" : "crit";
+    $("#h-score").innerHTML = `<span class="pill ${cls}">${red.toFixed(0)}% better than guessing</span>`
+      + ` &nbsp; model off by ${f.rmse_db.toFixed(2)} dB on average, guessing normal is off by ${f.baseline_rmse_db.toFixed(2)} dB`
+      + ` &nbsp;·&nbsp; ${f.n} hours`;
+  } else $("#h-score").innerHTML = "";
+  if(!s){ svg.appendChild(el("text",{x:60,y:60,"font-size":13,fill:"currentColor"},"no data")); return; }
+  const all=s.measured.concat(s.predicted).filter(v=>isFinite(v));
+  const lo=Math.min(...all)-1, hi=Math.max(...all)+1;
+  yTicks(svg,A,lo,hi,v=>(v>0?"+":"")+v.toFixed(0)+" dB");
+  const xs=s.t.map((_,i)=>A.x0+(A.x1-A.x0)*i/(s.t.length-1||1));
+  const Y=v=>A.y1-(v-lo)/(hi-lo)*(A.y1-A.y0);
+  line(svg,xs,s.measured.map(Y),"var(--muted)",1.4);
+  line(svg,xs,s.predicted.map(Y),COLOURS[glider]||"var(--signal)",2);
+  xLabels(svg,A,s.t.map(t=>t.slice(5,10)));
+  $("#h-legend").innerHTML =
+      `<span style="color:var(--muted)"><i></i><em>measured (what the hydrophone recorded)</em></span>`
+    + `<span style="color:${COLOURS[glider]||"var(--signal)"}"><i></i><em>predicted by a model that never saw ${glider}</em></span>`;
+  // per-glider table
+  const rows=(META.metrics.find(x=>x.band===band)||{folds:[]}).folds;
+  $("#h-table").innerHTML = "<thead><tr><th>Glider held out</th><th>Hours</th>"
+    + "<th>Model error dB</th><th>Guessing-normal error dB</th><th>Better by</th></tr></thead><tbody>"
+    + rows.map(r=>{
+        const red = 100*(1 - r.rmse_db/r.baseline_rmse_db);
+        return `<tr><td>${r.held_out}</td><td class="n">${r.n}</td>`
+          + `<td class="n">${r.rmse_db.toFixed(2)}</td><td class="n">${r.baseline_rmse_db.toFixed(2)}</td>`
+          + `<td class="n">${red.toFixed(0)}%</td></tr>`;}).join("")
+    + "</tbody>";
+}
+
+/* ---------- Drivers ---------- */
+function drawDrivers(){
+  const band=$("#d-band").value, rows=(DRV[band]||[]).slice(0,12);
+  const svg=$("#d-chart"); svg.innerHTML=""; svg.style.color="var(--muted)";
+  const x0=170,x1=860,y0=14, rowH=28;
+  const max=Math.max(...rows.map(r=>r.importance),0.01);
+  rows.forEach((r,i)=>{
+    const y=y0+i*rowH;
+    svg.appendChild(el("text",{x:x0-10,y:y+15,"text-anchor":"end","font-size":12.5,"font-family":"IBM Plex Mono, monospace",fill:"currentColor"},r.feature));
+    const w=Math.max(1,(x1-x0)*Math.max(r.importance,0)/max);
+    svg.appendChild(el("rect",{x:x0,y:y+3,width:w,height:18,fill:r.feature==="depth_rate_ms"||r.feature==="depth_m"||r.feature==="frac_surface"?"var(--warn)":"var(--signal)",opacity:.85}));
+    svg.appendChild(el("text",{x:x0+w+7,y:y+17,"font-size":11.5,"font-family":"IBM Plex Mono, monospace",fill:"currentColor"},r.importance.toFixed(3)));
+  });
+  svg.setAttribute("viewBox",`0 0 900 ${y0+rows.length*rowH+14}`);
+}
+
+/* ---------- Forecast ---------- */
+async function drawForecast(refresh){
+  $("#fc-meta").textContent = refresh ? "fetching…" : "";
+  const f = await get("/api/forecast"+(refresh?"?refresh=1":""));
+  const svg=$("#fc-chart"), A=axes(svg);
+  if(f.error){ $("#fc-meta").textContent=f.error; svg.innerHTML=""; return; }
+  $("#fc-meta").innerHTML = `run ${f.generated_utc} · ${f.horizon_hours ?? f.hours.length} hours available · held at mission median: <code>${Object.keys(f.held_at_median).join(", ")}</code>`;
+  const codes=Object.keys(f.bands);
+  const allPct=codes.flatMap(c=>f.bands[c].range_pct);
+  const lo=Math.min(50,...allPct)-5, hi=Math.max(...allPct)+5;
+  yTicks(svg,A,lo,hi,v=>v.toFixed(0)+"%");
+  const xs=f.hours.map((_,i)=>A.x0+(A.x1-A.x0)*i/(f.hours.length-1||1));
+  const wmax=Math.max(...f.wind_ms,8);
+  let wd="M"+A.x0+","+A.y1;
+  f.wind_ms.forEach((v,i)=>wd+="L"+xs[i].toFixed(1)+","+(A.y1-(v/wmax)*(A.y1-A.y0)).toFixed(1));
+  wd+="L"+A.x1+","+A.y1+"Z";
+  svg.appendChild(el("path",{d:wd,fill:"var(--muted)","fill-opacity":.16}));
+
+  codes.forEach(c=>{
+    const ok=(META.scores[c]||{}).rating !== "useless";
+    line(svg,xs,f.bands[c].range_pct.map(v=>A.y1-(v-lo)/(hi-lo)*(A.y1-A.y0)),
+         BAND_COLOUR[c]||"var(--signal)", ok?2.2:1.4, ok?null:"5 4");
+  });
+  xLabels(svg,A,f.hours.map(h=>h.slice(5,13).replace("T"," ")));
+  $("#fc-legend").innerHTML = codes.map(c=>{
+      const bad=(META.scores[c]||{}).rating==="useless";
+      return `<span style="color:${BAND_COLOUR[c]}"><i class="${bad?"dashed":""}"></i>`
+           + `<em style="color:var(--ink-2)">${f.bands[c].name}</em>`
+           + (bad?` <em>(dashed — no better than guessing)</em>`:"") + `</span>`;
+    }).join("")
+    + `<span style="color:var(--muted)"><i class="fill"></i><em>forecast wind, right up to ${wmax.toFixed(0)} m/s</em></span>`;
+  $("#fc-table").innerHTML = "<thead><tr><th>Hour UTC</th><th>Wind m/s</th><th>Hs m</th>"
+    + codes.map(c=>`<th>${f.bands[c].name}</th>`).join("") + "</tr></thead><tbody>"
+    + f.hours.map((h,i)=>`<tr><td>${h}</td><td class="n">${f.wind_ms[i]}</td><td class="n">${f.hs_m[i]}</td>`
+      + codes.map(c=>`<td class="n">${f.bands[c].range_pct[i]}%</td>`).join("") + "</tr>").join("")
+    + "</tbody>";
+}
+
+/* ---------- About ---------- */
+function drawAbout(){
+  const ex=Object.entries(META.excluded).map(([k,v])=>`<b>${k}</b> is excluded: ${v}.`).join(" ");
+  $("#about").innerHTML = `
+  <p>Ocean noise is mostly weather. This model learns that relationship from the Glider Rodeo recordings and AQUAVIEW's ocean data, then uses it to say how far a glider could hear — in the past, or in a forecast.</p>
+  <h3>How it was trained</h3>
+  <ul>
+    <li><b>${META.n_rows.toLocaleString()} glider-hours</b> from ${Object.keys(META.gliders).length} gliders, 28 Jan – 12 Feb 2026.</li>
+    <li>Inputs: wind and rain (PacIOOS WRF Oahu), waves (WaveWatch III), temperature and currents (ROMS), seafloor depth (HMRG), time of day, and the glider's own depth and dive rate.</li>
+    <li>Target: band level minus that glider's own median, so the recorders' calibration differences cancel.</li>
+    <li>Model: gradient-boosted trees, one per band. Tested by leave-one-glider-out — each glider is predicted by a model that never saw it.</li>
+    <li><b>How it is scored.</b> For each held-out glider we compare two errors: how far
+        the model's prediction was from the truth, and how far you would have been if you
+        had simply assumed conditions were normal for that glider. "15% better than
+        guessing" means the model's typical error was 15% smaller. 0% means it added
+        nothing at all.</li>
+  </ul>
+  <h3>What it cannot do</h3>
+  <ul>
+    <li>No absolute decibels: the fleet's calibrations disagree by up to 57 dB.</li>
+    <li>The fin whale band (10–30 Hz) is dominated by shipping, and there is no AIS data for this window. Its skill is near zero, which is the honest result.</li>
+    <li>Range percentages assume spherical spreading, so they are a relative guide, not a propagation model.</li>
+    <li>${ex}</li>
+  </ul>`;
+  $("#a-metrics").innerHTML = "<thead><tr><th>Band</th><th>Hours used</th>"
+    + "<th>Model error dB</th><th>Guessing-normal error dB</th><th>Better by</th><th>Verdict</th></tr></thead><tbody>"
+    + META.metrics.map(m=>{ const sc=META.scores[m.band];
+      return `<tr><td>${META.bands[m.band].name}</td><td class="n">${m.n_rows.toLocaleString()}</td>`
+        + `<td class="n">${sc.rmse_db.toFixed(2)}</td><td class="n">${sc.baseline_rmse_db.toFixed(2)}</td>`
+        + `<td class="n">${sc.error_reduction_pct.toFixed(0)}%</td>`
+        + `<td><span class="pill ${RATING_CLASS[sc.rating]}">${sc.phrase}</span></td></tr>`;}).join("") + "</tbody>";
+}
+
+/* ---------- boot ---------- */
+(async function(){
+  META = await get("/api/meta");
+  buildSliders(); runPredict(); drawAbout();
+
+  const bands=Object.keys(META.bands);
+  $("#h-band").innerHTML = bands.map(b=>`<option value="${b}">${META.bands[b].name}</option>`).join("");
+  $("#d-band").innerHTML = bands.map(b=>`<option value="${b}">${META.bands[b].name}</option>`).join("");
+  $("#h-glider").innerHTML = Object.keys(META.gliders).map(g=>`<option>${g}</option>`).join("");
+  $("#h-band").value="SPWH"; $("#d-band").value="SPWH";
+
+  $("#reset").onclick=()=>{ META.sliders.forEach(s=>{
+      const v = s.key==="hour_utc" ? 12 : (META.defaults[s.key] ?? (s.min+s.max)/2);
+      state[s.key]=v; document.getElementById("s-"+s.key).value=v; showVal(s); }); runPredict(); };
+  $("#h-band").onchange = $("#h-glider").onchange = drawHindcast;
+  $("#d-band").onchange = drawDrivers;
+  $("#fc-refresh").onclick = ()=>drawForecast(true);
+
+  async function selectTab(t){
+    if(!t) return;
+    document.querySelectorAll('[role="tab"]').forEach(x=>{
+      const on=x===t; x.setAttribute("aria-selected",on?"true":"false");
+      document.getElementById(x.getAttribute("aria-controls")).hidden=!on; });
+    history.replaceState(null,"","#"+t.id.replace("tab-",""));
+    if(t.id==="tab-hind"){ HIND = HIND || await get("/api/hindcast"); drawHindcast(); }
+    if(t.id==="tab-drv"){ DRV = DRV || await get("/api/drivers"); drawDrivers(); }
+    if(t.id==="tab-fc"){ await drawForecast(false); }
+  }
+  document.querySelectorAll('[role="tab"]').forEach(t=>t.onclick=()=>selectTab(t));
+  addEventListener("hashchange",()=>selectTab(document.getElementById("tab-"+location.hash.slice(1))));
+  if(location.hash) await selectTab(document.getElementById("tab-"+location.hash.slice(1)));
+  $("#theme").onclick=()=>{
+    const cur=document.documentElement.getAttribute("data-theme");
+    const dark=cur ? cur==="dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+    document.documentElement.setAttribute("data-theme", dark?"light":"dark");
+  };
+})();
+</script>
+</body>
+</html>
