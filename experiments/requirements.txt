@@ -1,0 +1,13 @@
+# Python 3.10; install torch==2.5.1 from the cu121 index first on Aquaman.
+torch==2.5.1
+tabpfn==2.0.9
+numpy==2.2.6
+pandas==2.2.3
+scipy==1.15.3
+scikit-learn==1.6.1
+h5py==3.14.0
+joblib==1.5.2
+requests==2.32.5
+matplotlib==3.10.6
+pytest==8.4.2
+threadpoolctl==3.6.0

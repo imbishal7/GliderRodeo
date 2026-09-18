@@ -1,8 +1,9 @@
 """Paths, study area, bands and the glider registry."""
+import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-RODEO = ROOT.parent / "hackathon-data"
+RODEO = Path(os.environ.get("GLIDER_RODEO_DATA", ROOT.parent / "hackathon-data"))
 DATA, ENV, OUT, WEB = ROOT / "data", ROOT / "data" / "env", ROOT / "out", ROOT / "web"
 for _d in (DATA, ENV, OUT):
     _d.mkdir(parents=True, exist_ok=True)
