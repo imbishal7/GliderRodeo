@@ -1,5 +1,8 @@
 # Noise Nowcaster
 
+Reproducible model comparisons and Aquaman GPU instructions are in
+[experiments/README.md](experiments/README.md).
+
 Predicts how loud the ocean is in five whale-call frequency bands from the weather and
 sea state, and converts that into how far a glider can hear.
 
@@ -57,6 +60,32 @@ Two findings worth reporting:
 Over the mission, measured noise in the sperm whale band swung from −7.9 dB to +5.8 dB
 around its median, which is a **23× change in monitored area** between a quiet hour and
 a loud one.
+
+## Improving on the baseline
+
+The table above is the baseline model. A follow-up comparison asked whether anything
+beats it on a **glider it has never seen** (leave-one-glider-out), scored on identical
+folds with a paired UTC-day block bootstrap:
+
+| model | LOGO RMSE | vs baseline | 95% interval |
+|---|---|---|---|
+| baseline (global) | 6.374 dB | — | — |
+| **forcing-gated mixture of experts** | **6.196 dB** | **−0.176 dB (2.8%)** | [−0.272, −0.069] |
+
+Two experts on the same 13 predictors, routed by a training-only gate over **sea
+state** — wind, wave height, wave steepness, upslope current. It reproduces under a
+second seed (−0.178 / −0.162). Gates built on geography or bathymetry do nothing
+(−0.02 or less), so the gain comes from routing on forcing, not on location.
+
+Two caveats worth reading before quoting the number. The gain is **specific to
+unseen-glider transfer** — on forward-time prediction the same gate is worse than the
+global model. And **SPWH and UNDO overlap spectrally**: SPWH (5–15 kHz) is a strict
+subset of UNDO (5–20 kHz) and the two series correlate at r = 0.9997, so the figures
+above exclude SPWH rather than count one result twice. The five bands in the table
+above are closer to two independent measurements than five.
+
+Full method, alternative gates, and the fine-tuning and target-scaling arms that were
+also tested: [experiments/FINDINGS.md](experiments/FINDINGS.md).
 
 ## Pipeline
 
